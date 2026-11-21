@@ -27,16 +27,16 @@
    ===================================================================== */
 
 const FIREBASE_CONFIG = {
-  apiKey: "VOTRE_API_KEY",
-  authDomain: "VOTRE_PROJET.firebaseapp.com",
-  projectId: "VOTRE_PROJET",
-  appId: "VOTRE_APP_ID"
+  apiKey: "AIzaSyB5iNYQYCYHbXxm6AeL6veMeNWgFKvaY14",
+  authDomain: "zmajesty.firebaseapp.com",
+  projectId: "zmajesty",
+  appId: "1:44961582753:web:d97b6f61ff22a97b1baae0"
 };
 
 // E-mails des deux comptes admin créés à l'étape 3 (le site ne demande que le mot de passe).
 const ADMIN_EMAILS = {
-  'Leader': 'leader@zmajesty.com',
-  'Co-Leader': 'coleader@zmajesty.com'
+  'Leader': 'theodorik153@gmail.com',
+  'Co-Leader': 'loumig59@gmail.com'
 };
 
 // Mode local (sans Firebase) uniquement. ⚠️ Visibles par tout le monde dans le code :
