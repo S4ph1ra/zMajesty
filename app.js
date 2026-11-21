@@ -1,8 +1,8 @@
 'use strict';
 
 /* ===== Configuration ===== */
-// ⚠️ Ces mots de passe sont lisibles par n'importe qui dans le code source du site.
-const PASSWORDS = { majesty2026: 'Leader', royal2026: 'Co-Leader' };
+// Mode local uniquement (sans Firebase) : voir firebase-config.js
+const PASSWORDS = window.LOCAL_PASSWORDS || {};
 const CLAN_POINTS = 67105, MAX_POINTS = 300000;
 const SPOKEN = ['Français','English','Español','Deutsch','Italiano','Português','Русский','日本語','中文','한국어','العربية','Türkçe','Nederlands','Polski'];
 const STATUS = { 'Très actif':['st-very','statusVeryActive'], 'Activité moyenne':['st-medium','statusMedium'], 'Actif':['st-active','statusActive'], 'Inactif':['st-inactive','statusInactive'], 'Absent':['st-absent','statusAbsent'] };
@@ -22,12 +22,18 @@ const store = {
 let lang = (() => { try { return localStorage.getItem('zMajestyLanguage'); } catch { return null; } })();
 if (!TRANSLATIONS[lang]) lang = 'fr';
 let role = null, current = 'accueil', editId = null;
-let members = store.get('zMajestyMembers', null) || [
+const SEED = [
   { id:1, pseudo:'KingMajesty', gameRank:'Grand Maître', clanRank:'Leader', social:'@kingmajesty', status:'Très actif', canBeCoLeader:false, languages:'Français, English' },
   { id:2, pseudo:'RoyalKnight', gameRank:'Maître', clanRank:'Co-Leader', social:'Discord: Royal#1234', status:'Actif', canBeCoLeader:false, languages:'Français' },
   { id:3, pseudo:'Ancien', gameRank:'Expert', clanRank:'Aîné', social:'@ancien', status:'Activité moyenne', canBeCoLeader:true, languages:'Español, Français' }
 ];
+let members = store.get('zMajestyMembers', null) || (Cloud.configured ? [] : SEED);
 let gallery = store.get('zMajestyGallery', []);
+// Enregistre : copie locale (cache hors ligne) + Firestore si activé
+function persist(name, list) {
+  store.set(name === 'members' ? 'zMajestyMembers' : 'zMajestyGallery', list);
+  if (Cloud.on) Cloud.save(name, list).catch(e => toast('⚠️ ' + (e.code || e.message)));
+}
 const LOCALE = { br:'pt-BR', jp:'ja' };
 const RTL = ['ar'];
 const loc = () => LOCALE[lang] || lang;
@@ -140,10 +146,12 @@ document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click
 
 /* ===== Connexion ===== */
 $('loginBtn').addEventListener('click', () => { $('loginForm').reset(); openModal('loginModal'); $('loginPassword').focus(); });
-$('logoutBtn').addEventListener('click', () => { role = null; renderAll(); });
-$('loginForm').addEventListener('submit', e => {
+$('logoutBtn').addEventListener('click', () => { role = null; if (Cloud.on) Cloud.logout(); renderAll(); });
+$('loginForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const r = Object.hasOwn(PASSWORDS, $('loginPassword').value) ? PASSWORDS[$('loginPassword').value] : null;
+  const pw = $('loginPassword').value;
+  const r = Cloud.configured ? (Cloud.on ? await Cloud.login(pw) : null)
+                             : (Object.hasOwn(PASSWORDS, pw) ? PASSWORDS[pw] : null);
   if (!r) return toast(t('loginErr'));
   role = r; closeModals(); renderAll(); toast(t(r === 'Leader' ? 'loginOkLeader' : 'loginOkCo'));
 });
@@ -181,13 +189,13 @@ $('memberForm').addEventListener('submit', e => {
   };
   if (editId === null) { members.push({ id: Math.max(0, ...members.map(m => m.id)) + 1, ...data }); toast(t('memberAdded')); }
   else { members = members.map(m => m.id === editId ? { ...m, ...data } : m); toast(t('memberEdited')); }
-  store.set('zMajestyMembers', members); closeModals(); renderMembers();
+  persist('members', members); closeModals(); renderMembers();
 });
 $('membersGrid').addEventListener('click', e => {
   const ed = e.target.closest('[data-edit]'), dl = e.target.closest('[data-del]');
   if (ed) openMember(+ed.dataset.edit);
   if (dl && role && confirm(t('confirmDelMember'))) {
-    members = members.filter(m => m.id !== +dl.dataset.del); store.set('zMajestyMembers', members); renderMembers(); toast(t('memberDeleted'));
+    members = members.filter(m => m.id !== +dl.dataset.del); persist('members', members); renderMembers(); toast(t('memberDeleted'));
   }
 });
 
@@ -198,12 +206,12 @@ $('galleryForm').addEventListener('submit', e => {
   const url = $('itemUrl').value.trim();
   if (!embedUrl(url)) return toast(t('invalidUrl'));
   gallery.push({ id: Math.max(0, ...gallery.map(i => i.id)) + 1, type: $('itemType').value, url, description: $('itemDesc').value.trim() });
-  store.set('zMajestyGallery', gallery); closeModals(); renderGallery(); toast(t('itemAdded'));
+  persist('gallery', gallery); closeModals(); renderGallery(); toast(t('itemAdded'));
 });
 $('galleryGrid').addEventListener('click', e => {
   const b = e.target.closest('[data-delitem]');
   if (b && role && confirm(t('confirmDelItem'))) {
-    gallery = gallery.filter(i => i.id !== +b.dataset.delitem); store.set('zMajestyGallery', gallery); renderGallery(); toast(t('itemDeleted'));
+    gallery = gallery.filter(i => i.id !== +b.dataset.delitem); persist('gallery', gallery); renderGallery(); toast(t('itemDeleted'));
   }
 });
 
@@ -223,6 +231,11 @@ $('galleryGrid').addEventListener('click', e => {
 /* ===== Démarrage ===== */
 showSection('accueil');
 applyLanguage();
+if (Cloud.on) {   // données partagées en temps réel + session admin restaurée
+  Cloud.watch('members', l => { members = l; store.set('zMajestyMembers', l); renderMembers(); });
+  Cloud.watch('gallery', l => { gallery = l; store.set('zMajestyGallery', l); renderGallery(); });
+  Cloud.onAuth(r => { role = r; renderAll(); });
+}
 
 /* ===== Application installable (PWA) ===== */
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
