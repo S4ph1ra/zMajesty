@@ -27,10 +27,10 @@
    ===================================================================== */
 
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyB5iNYQYCYHbXxm6AeL6veMeNWgFKvaY14",
-  authDomain: "zmajesty.firebaseapp.com",
-  projectId: "zmajesty",
-  appId: "1:44961582753:web:d97b6f61ff22a97b1baae0"
+  apiKey: "AIzaSyDGLoGWFjVSjPTt5hB2fxvY-SPLven5Fdw",
+  authDomain: "zmajesty-df503.firebaseapp.com",
+  projectId: "zmajesty-df503",
+  appId: "1:481633858957:web:96ab3ac11029b47b19b9c4"
 };
 
 // E-mails des deux comptes admin créés à l'étape 3 (le site ne demande que le mot de passe).
